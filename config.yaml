@@ -8,7 +8,7 @@ epochs: 50
 batch_size: 128
 learning_rate: 0.1
 momentum: 0.9
-weight_decay: 5e-4
+weight_decay: 0.0005
 scheduler: "cosine"         # "step", "cosine", or "none"
 step_size: 30
 gamma: 0.1
