@@ -61,6 +61,7 @@ def evaluate(model, loader, criterion, device):
 
 def main():
     cfg = load_config()
+    print("weight_decay:", cfg["weight_decay"], type(cfg["weight_decay"]))
     set_seed(cfg["seed"])
     device = torch.device(cfg["device"])
 
