@@ -1,0 +1,23 @@
+# config.yaml
+
+model: "contextual"         # "baseline" or "contextual"
+run_name: "contextual-v1"
+
+# Training
+epochs: 50
+batch_size: 128
+learning_rate: 0.1
+momentum: 0.9
+weight_decay: 5e-4
+scheduler: "cosine"         # "step", "cosine", or "none"
+step_size: 30
+gamma: 0.1
+
+# Model
+num_classes: 100
+width_mult: 1.0
+
+# System
+seed: 42
+num_workers: 2
+device: "cuda"              # or "cpu"
