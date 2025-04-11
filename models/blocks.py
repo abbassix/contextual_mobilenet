@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from contextual_conv import ContextualConv2d
+from .contextual_conv_py import ContextualConv2d
 
 
 class InvertedResidual(nn.Module):
@@ -10,29 +10,34 @@ class InvertedResidual(nn.Module):
         hidden_dim = in_channels * expand_ratio
         self.use_residual = (stride == 1 and in_channels == out_channels)
 
-        layers = []
+        self.expand = nn.Identity()
         if expand_ratio != 1:
-            layers.append(nn.Conv2d(in_channels, hidden_dim, kernel_size=1, bias=False))
-            layers.append(nn.BatchNorm2d(hidden_dim))
-            layers.append(nn.ReLU6(inplace=True))
+            self.expand = nn.Sequential(
+                nn.Conv2d(in_channels, hidden_dim, kernel_size=1, bias=False),
+                nn.BatchNorm2d(hidden_dim),
+                nn.ReLU6(inplace=True)
+            )
 
-        # Depthwise conv
-        layers.append(nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, stride=stride,
-                                padding=1, groups=hidden_dim, bias=False))
-        layers.append(nn.BatchNorm2d(hidden_dim))
-        layers.append(nn.ReLU6(inplace=True))
+        self.depthwise = nn.Sequential(
+            nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, stride=stride,
+                      padding=1, groups=hidden_dim, bias=False),
+            nn.BatchNorm2d(hidden_dim),
+            nn.ReLU6(inplace=True)
+        )
 
-        # Pointwise projection
-        layers.append(nn.Conv2d(hidden_dim, out_channels, kernel_size=1, bias=False))
-        layers.append(nn.BatchNorm2d(out_channels))
-
-        self.block = nn.Sequential(*layers)
+        self.project = nn.Sequential(
+            nn.Conv2d(hidden_dim, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels)
+        )
 
     def forward(self, x):
+        identity = x
+        x = self.expand(x)
+        x = self.depthwise(x)
+        x = self.project(x)
         if self.use_residual:
-            return x + self.block(x)
-        else:
-            return self.block(x)
+            x += identity
+        return x
 
 
 class ContextualInvertedResidual(nn.Module):
@@ -41,7 +46,7 @@ class ContextualInvertedResidual(nn.Module):
         hidden_dim = in_channels * expand_ratio
         self.use_residual = (stride == 1 and in_channels == out_channels)
 
-        self.expand = nn.Sequential()
+        self.expand = nn.Identity()
         if expand_ratio != 1:
             self.expand = nn.Sequential(
                 nn.Conv2d(in_channels, hidden_dim, kernel_size=1, bias=False),
@@ -68,15 +73,18 @@ class ContextualInvertedResidual(nn.Module):
         )
 
     def forward(self, x):
-        out = self.expand(x) if hasattr(self, 'expand') else x
-        N, C, H, W = out.shape
-        context = F.adaptive_avg_pool2d(out, 1).view(N, C)  # shape: (N, C)
-        out = self.contextual_depthwise(out, context)
-        out = self.bn_dw(out)
-        out = self.relu_dw(out)
-        out = self.project(out)
-
+        identity = x
+        # print(x.shape)
+        x = self.expand(x)
+        N, C, H, W = x.shape
+        context = F.adaptive_avg_pool2d(x, 1).view(N, C)  # global context vector
+        # print()
+        # print(x.shape)
+        # print(context.shape)
+        x = self.contextual_depthwise(x, context)
+        x = self.bn_dw(x)
+        x = self.relu_dw(x)
+        x = self.project(x)
         if self.use_residual:
-            return x + out
-        else:
-            return out
+            x += identity
+        return x
