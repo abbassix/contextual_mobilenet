@@ -1,7 +1,7 @@
 # config.yaml
 
 model: "contextual"         # "baseline" or "contextual"
-run_name: "contextual-v1"
+run_name: "contextual-v2"
 
 # Training
 epochs: 50
