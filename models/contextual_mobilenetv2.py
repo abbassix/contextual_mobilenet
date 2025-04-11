@@ -26,10 +26,14 @@ class ContextualMobileNetV2(nn.Module):
         layers = []
         for t, c, n, s in self.cfgs:
             out_channel = int(c * width_mult)
+            # print('--------')
             for i in range(n):
                 stride = s if i == 0 else 1
+                # print('init cntx blocks')
+                # print(f'\t{input_channel=}, {out_channel=}, {stride=}, {t=}')
                 layers.append(ContextualInvertedResidual(input_channel, out_channel, stride, t))
                 input_channel = out_channel
+        # breakpoint()
         self.features = nn.Sequential(*layers)
 
         last_channel = int(1280 * width_mult) if width_mult > 1.0 else 1280
